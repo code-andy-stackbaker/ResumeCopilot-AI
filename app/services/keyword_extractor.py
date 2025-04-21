@@ -10,6 +10,7 @@ CANDIDATE_KEYWORDS = [
     "CI/CD", "REST APIs", "Microservices", "TensorFlow", "PyTorch",
     "FastAPI", "GraphQL", "Scrum", "Agile", "Redis", "Kafka"
 ]
+top_keywords = []
 
 @torch.no_grad()
 def extract_keywords(resume_text: str, top_k: int = 8) -> str:
@@ -25,14 +26,15 @@ def extract_keywords(resume_text: str, top_k: int = 8) -> str:
     keyword_embeddings = model.encode(CANDIDATE_KEYWORDS, convert_to_tensor=True)
 
     # Step 3: Compute cosine similarity between resume and each keyword
-    # This gives us a tensor of similarity scores for each keyword
+    # This gives us a tensor of similarity scores for each keyword 
     cosine_scores = util.cos_sim(resume_embedding, keyword_embeddings)[0]
 
     # Step 4: Select the top-k highest scoring keywords
     top_results = torch.topk(cosine_scores, k=top_k)
 
     # Step 5: Map the indices of top keywords to their string names
-    top_keywords = [CANDIDATE_KEYWORDS[i] for i in top_results.indices]
+    for i in top_results.indices:
+      top_keywords.append(CANDIDATE_KEYWORDS[i])
 
     # Step 6: Return the selected keywords as a comma-separated string
     return ", ".join(top_keywords)
