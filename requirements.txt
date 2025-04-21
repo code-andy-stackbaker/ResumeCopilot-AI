@@ -1,0 +1,8 @@
+transformers
+torch
+sentence-transformers
+fastapi
+uvicorn
+python-dotenv
+pydantic
+numpy==1.26.4
