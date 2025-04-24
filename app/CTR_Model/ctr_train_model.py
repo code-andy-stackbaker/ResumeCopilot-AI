@@ -61,3 +61,7 @@ for epoch in range(epochs):
 
       epoch_loss += loss.item()
       print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}")
+
+# Save the trained model
+torch.save(model.state_dict(), "ctr_trained_model.pt")
+print("✅ Model saved to CTR_Model/ctr_trained_modal.pt")
