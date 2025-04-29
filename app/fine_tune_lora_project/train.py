@@ -7,6 +7,7 @@ from transformers import (
     Trainer
 )
 from peft import LoraConfig, get_peft_model, TaskType
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import pandas as pd
 import json
 
@@ -40,6 +41,18 @@ dataset = dataset["train"].train_test_split(test_size=0.2)
 def tokenize_function(example):
   return tokenizer(example["text"], truncation = True, padding = "max_length")
 
+def compute_metrics(eval_pred):
+  logits, labels = eval_pred
+  preds = torch.argmax(torch.tensor(logits), dim=-1)
+  precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='binary')
+  acc = accuracy_score(labels, preds)
+  return {
+      "accuracy": acc,
+      "f1": f1,
+      "precision": precision,
+      "recall": recall
+  }
+
 tokenized_dataset = dataset.map(tokenize_function, batched = True)
 
 print("Using device:", torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"))
@@ -62,10 +75,11 @@ args_custom = TrainingArguments(
 
 # 7. Create Trainer
 trainer = Trainer(
-    model=model,
-    args=args_custom,
-    train_dataset=tokenized_dataset["train"],
-    eval_dataset=tokenized_dataset["test"],
+  model=model,
+  args=args_custom,
+  train_dataset=tokenized_dataset["train"],
+  eval_dataset=tokenized_dataset["test"],
+  compute_metrics=compute_metrics 
 )
 
 
@@ -75,6 +89,9 @@ print("the tokenized dataset", tokenized_dataset)
 
 
 trainer.train()
+
+eval_results = trainer.evaluate()
+print("Final Evaluation Results:", eval_results)
 
 # 9. Save LoRA adapter only (not full model)
 model.save_pretrained("./lora_adapter")
