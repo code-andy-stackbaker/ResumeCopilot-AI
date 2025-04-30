@@ -19,8 +19,9 @@
   "rank_pattern": {},
   "revision": null,
   "target_modules": [
-    "query",
-    "value"
+    "value",
+    "key",
+    "query"
   ],
   "task_type": "SEQ_CLS",
   "use_rslora": false
