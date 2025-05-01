@@ -19,8 +19,8 @@ faiss.write_index(index, "job_index.faiss")
 pd.DataFrame({
   "job_id": range(len(job_texts)),
   "job_desciption": job_texts
-})
+}).to_csv("job_metadata.csv", index=False)
 
 
 
-print(job_embeddings.shape)
+print("Done...")
