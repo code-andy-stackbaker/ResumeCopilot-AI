@@ -1,6 +1,7 @@
 import pandas as pd
 import faiss
 from sentence_transformers import SentenceTransformer
+from classifier.classifier_reranker import ClassifierReranker
 import numpy as np
 import logging
 
@@ -8,6 +9,7 @@ class JobRecommender:
   def __init__(self, faiss_index_path, metadata_path, model_name="all-MiniLM-L6-v2", top_k=5):
     self.top_k = top_k
     self.model = SentenceTransformer(model_name)
+    self.classifier = ClassifierReranker()
     try:
       self.index = faiss.read_index(faiss_index_path)
     except Exception as e:
