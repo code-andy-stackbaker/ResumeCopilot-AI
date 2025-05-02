@@ -4,6 +4,7 @@ torch.multiprocessing.set_start_method("spawn", force=True)
 from app.recommender.job_recommender import JobRecommender
 import os 
 
+
 # Define file paths
 FAISS_INDEX_PATH = os.path.join(os.path.dirname(__file__), "model/job_index.faiss") 
 METADATA_PATH = os.path.join(os.path.dirname(__file__), "model/job_metadata.csv")
