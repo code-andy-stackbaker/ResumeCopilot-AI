@@ -1,7 +1,7 @@
 import pandas as pd
 import faiss
 from sentence_transformers import SentenceTransformer
-from classifier.classifier_reranker import ClassifierReranker
+from app.classifier.classifier_reranker import ClassifierReranker
 import numpy as np
 import logging
 
@@ -22,6 +22,8 @@ class JobRecommender:
       raise
 
   def recommend(self, resume_text: str):
+    print("✅ Starting recommendation...")
+
     if not resume_text or not isinstance(resume_text, str):
       raise ValueError("Resume text must be a non-empty string.")
     
@@ -33,16 +35,21 @@ class JobRecommender:
       return []
   
     results = []
-    print("the distances", distances)
+    print("the indices", indices[0])
     for i, idx in enumerate(indices[0]):
+      print(f"🔄 Processing job {i + 1}/{self.top_k} (index={idx})")
       job = self.metadata.iloc[idx]["job_desciption"]
-      
       score = float(distances[0][i])
       print("the score", score)
+      print("the job", job)
+      print("🧠 Calling classifier reranker...")
+      classifier_score = self.classifier.predict_match_score(resume_text, job)
+      print(f"✅ Classifier match score: {classifier_score}")
       results.append({
-          "rank": i + 1,
-          "job_description": job,
-          "faiss_score": round(score, 4)
+        "rank": i + 1,
+        "job_description": job,
+        "faiss_score": round(score, 4),
+        "classifier_score": round(classifier_score, 4)
       })
-
+    results.sort(key=lambda x: x["classifier_score"], reverse=True)
     return results
