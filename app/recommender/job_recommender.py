@@ -4,12 +4,29 @@ from sentence_transformers import SentenceTransformer
 from app.classifier.classifier_reranker import ClassifierReranker
 import numpy as np
 import logging
+import torch
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class JobRecommender:
   def __init__(self, faiss_index_path, metadata_path, model_name="all-MiniLM-L6-v2", top_k=5):
     self.top_k = top_k
-    self.model = SentenceTransformer(model_name)
     self.classifier = ClassifierReranker()
+    
+    # Determine device for SentenceTransformer
+    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+      self.device = torch.device("mps")
+      logger.info("MPS device is available. Using MPS for SentenceTransformer.")
+    else:
+      self.device = torch.device("cpu")
+      logger.info("MPS device not available. Using CPU for SentenceTransformer.")
+      if not torch.backends.mps.is_built():
+        logger.warning("MPS not built with PyTorch. Consider rebuilding PyTorch with MPS support if you have an Apple Silicon Mac.")
+    
+    self.model = SentenceTransformer(model_name, device=self.device)
+    
     try:
       self.index = faiss.read_index(faiss_index_path)
     except Exception as e:
