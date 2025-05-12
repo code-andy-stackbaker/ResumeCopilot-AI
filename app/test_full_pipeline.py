@@ -1,5 +1,3 @@
-# app/test_full_pipeline.py
-
 import os
 import sys # Still used for sys.exit on import error
 import logging
@@ -131,8 +129,6 @@ def run_integrated_job_pipeline():
     
     try:
         logger.info("🧠 Invoking QAService for specific context Q&A...")
-        # print("the context for LLM", context_for_llm)
-        # qa_result = qa_service.answer_with_specific_context(question_about_match, context_for_llm)
         
         qa_result = qa_service.answer_general_question(question_about_match)
         
