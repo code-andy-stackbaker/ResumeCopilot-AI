@@ -33,7 +33,7 @@ class ClassifierReranker:
 
     def predict_match_score(self, resume_text: str, job_text: str) -> float:
       try:
-        if not resume_text or not job_text
+        if not resume_text or not job_text:
           raise ValueError("Both resume_text and job_text must be provided.")
         input_text = f"{resume_text} [SEP] {job_text}"
         print("🔠 Combined text:", input_text)
@@ -56,5 +56,5 @@ class ClassifierReranker:
         logging.error(f"[ClassifierReranker] Input validation error: {ve}")
         return 0.0
       except Exception as e:
-          logging.error(f"[ClassifierReranker] Prediction failed: {e}")
-          return 0.0
+        logging.error(f"[ClassifierReranker] Prediction failed: {e}")
+        return 0.0
