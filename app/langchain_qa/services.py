@@ -9,6 +9,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
 from langchain.schema.document import Document
+import torch # For MPS check
+
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -37,6 +39,19 @@ class QAService:
         self.prompt_template = None
         self.combine_docs_chain = None
         self.general_retrieval_chain = None
+        retrieval_chain = None
+        
+        
+        if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+          self.device = torch.device("mps")
+          logger.info("MPS device is available. Using MPS for SentenceTransformer.")
+        else:
+          self.device = torch.device("cpu")
+          logger.info("MPS device not available. Using CPU for SentenceTransformer.")
+          if not torch.backends.mps.is_built():
+            logger.warning("MPS not built with PyTorch. Consider rebuilding PyTorch with MPS support if you have an Apple Silicon Mac.")
+        
+        
         self._load_components()
 
     def _load_components(self):
@@ -46,26 +61,35 @@ class QAService:
 
             logger.info(f"Loading FAISS index from: {FAISS_QA_INDEX_DIR}")
             if not os.path.exists(FAISS_QA_INDEX_DIR):
-                raise FileNotFoundError(f"FAISS index directory not found: {FAISS_QA_INDEX_DIR}. Please ensure 'app/langchain_qa/qa/embed_jobs.py' has been run successfully.")
+              raise FileNotFoundError(f"FAISS index directory not found: {FAISS_QA_INDEX_DIR}. Please ensure 'app/langchain_qa/qa/embed_jobs.py' has been run successfully.")
             self.vectorstore = FAISS.load_local(
-                FAISS_QA_INDEX_DIR,
-                self.embedder,
-                allow_dangerous_deserialization=True # Make sure you trust the source of the FAISS index
+              FAISS_QA_INDEX_DIR,
+              self.embedder,
+              allow_dangerous_deserialization=True # Make sure you trust the source of the FAISS index
             )
             self.retriever = self.vectorstore.as_retriever()
             logger.info("FAISS index and retriever loaded successfully for general Q&A.")
 
             logger.info(f"Loading LLM model from: {LLM_MODEL_PATH}")
             self.llm = CTransformers(
-                model=LLM_MODEL_PATH,
-                model_type=LLM_MODEL_TYPE,
-                config={"max_new_tokens": 350, "temperature": 0.7, "context_length": 2048} # Increased max_new_tokens
+              model=LLM_MODEL_PATH,
+              model_type=LLM_MODEL_TYPE,
+              config={"max_new_tokens": 350, "temperature": 0.7, "context_length": 2048, "gpu_layers": 20 } # Increased max_new_tokens
             )
             logger.info("LLM loaded successfully.")
-
-            self.prompt_template = PromptTemplate.from_template(
-                "Answer the question based on the context below. Be detailed and comprehensive.\n\nContext:\n{context}\n\nQuestion: {input}"
+            
+            # Inside _load_components method, replace the old prompt_template line with this:
+            detailed_prompt_text = (
+                "Use the following pieces of context ONLY to answer the question at the end. "
+                "The context may contain a candidate's resume and a specific job description. "
+                "If the question asks about required skills for the job, focus ONLY on the 'Specific Job Description' part of the context. "
+                "If the context does not contain the answer, clearly state that the answer cannot be determined from the provided context.\n\n"
+                "Context:\n{context}\n\n"
+                "Question: {input}\n"
+                "Answer:"
             )
+            self.prompt_template = PromptTemplate.from_template(detailed_prompt_text)
+            logger.info("Using detailed prompt template.")
 
             # This chain is for answering questions with provided context (e.g., specific job + resume)
             self.combine_docs_chain = create_stuff_documents_chain(self.llm, self.prompt_template)
@@ -98,25 +122,38 @@ class QAService:
             return {"error": str(e)}
 
     def answer_with_specific_context(self, question: str, context_text: str) -> dict:
-        """
-        Answers a question based on the specifically provided context text.
-        The context_text should already combine relevant information (e.g., resume + job description).
-        """
-        if not self.combine_docs_chain:
-            logger.error("Combine docs chain is not initialized.")
-            return {"error": "QAService not properly initialized."}
-        try:
-            logger.info(f"Answering question with specific context: {question}")
-            # The 'create_stuff_documents_chain' expects a list of Document objects for the context
-            context_documents = [Document(page_content=context_text)]
-            result = self.combine_docs_chain.invoke({
-                "input": question,
-                "context": context_documents
-            })
-            return result
-        except Exception as e:
-            logger.error(f"Error during specific context question answering: {e}")
-            return {"error": str(e)}
+      """
+      Answers a question based on the specifically provided context text.
+      The context_text should already combine relevant information (e.g., resume + job description).
+      """
+      if not self.combine_docs_chain:
+          logger.error("Combine docs chain is not initialized.")
+          return {"error": "QAService not properly initialized."}
+      try:
+          logger.info(f"Answering question with specific context: {question}")
+          # The 'create_stuff_documents_chain' expects a list of Document objects for the context
+          context_documents = [Document(page_content=context_text)]
+          logger.info(f"Context documents being passed: {context_documents}") # Log the input docs
+
+          logger.info(f"Invoking combine_docs_chain...")
+          raw_result = self.combine_docs_chain.invoke({
+              "input": question,
+              "context": context_documents
+          })
+          logger.info(f"RAW result dictionary from combine_docs_chain:") # <-- Log the raw output
+
+          # Check if the expected 'answer' key exists and has content
+          if raw_result and isinstance(raw_result, str):
+              return raw_result # Return the full dictionary if valid
+          else:
+              logger.error(f"LLM chain did not return a valid answer dictionary or answer was empty. Raw result: {raw_result}")
+              # Return a dictionary indicating the issue, potentially including the raw result if helpful
+              return {"error": "LLM did not provide a valid answer in the expected format.", "raw_result": raw_result}
+
+      except Exception as e:
+          # Log the exception with traceback for better debugging
+          logger.error(f"Error during specific context question answering: {e}", exc_info=True)
+          return {"error": str(e)}
 
 # Example usage (optional, for testing this file directly)
 if __name__ == "__main__":

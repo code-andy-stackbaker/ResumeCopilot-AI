@@ -7,3 +7,5 @@ venv/
 *.log
 *.pt
 /venv/
+venv_native_arm64/
+/venv_native_arm64/

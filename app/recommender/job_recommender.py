@@ -53,7 +53,7 @@ class JobRecommender:
   
     results = []
     print("the indices", indices[0])
-    for i, idx in enumerate(indices[0]):
+    for i, idx in enumerate(indices[0]):                                # [101, 105, 112, 118] vector/Doc mapping ID'S
       print(f"🔄 Processing job {i + 1}/{self.top_k} (index={idx})")
       job = self.metadata.iloc[idx]["job_desciption"]
       score = float(distances[0][i])

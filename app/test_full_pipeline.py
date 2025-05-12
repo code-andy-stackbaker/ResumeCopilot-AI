@@ -122,25 +122,26 @@ def run_integrated_job_pipeline():
     logger.info(f"{selected_job_description[:300]}...\n")
 
     question_about_match = (
-        "Considering the provided resume and this specific job description, "
-        "explain in detail why this job is a strong potential match for the candidate. "
-        "Highlight at least 3 key skills or experiences from the resume that align directly with the job's requirements. "
-        "Also, mention any potential areas where the candidate might need to grow or learn more for this role, if apparent."
+      "What skills required for this selected job? "
     )
     logger.info(f"❓ Question for LLM: {question_about_match}\n")
 
     context_for_llm = f"Candidate's Resume:\n{resume_text}\n\nSpecific Job Description for Analysis:\n{selected_job_description}"
+    general_question = "what are required skills in this job?"
     
     try:
         logger.info("🧠 Invoking QAService for specific context Q&A...")
-        qa_result = qa_service.answer_with_specific_context(question_about_match, context_for_llm)
+        # print("the context for LLM", context_for_llm)
+        # qa_result = qa_service.answer_with_specific_context(question_about_match, context_for_llm)
         
-        if qa_result and "answer" in qa_result:
+        qa_result = qa_service.answer_general_question(question_about_match)
+        
+        if qa_result:
             logger.info("\n✅ LLM Answer about Job Match:")
             # Print directly to console for potentially better formatting of LLM output
-            print(qa_result["answer"])
+            print(qa_result)
         elif qa_result and "error" in qa_result:
-            logger.error(f"❌ Q&A Service returned an error: {qa_result['error']}")
+            logger.error(f"❌ Q&A Service returned an error: {qa_result}")
         else:
             logger.error("❌ Q&A Service returned an unexpected result or no answer.")
 
