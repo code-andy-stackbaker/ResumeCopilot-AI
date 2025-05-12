@@ -3,7 +3,7 @@ from app.models.resume import ResumeInput, KeywordOutput
 from app.services.keyword_extractor import extract_keywords
 from app.recommender.job_recommender import JobRecommender  # Import the recommender
 import logging
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing import List
 
 #Configure logging
@@ -38,11 +38,17 @@ async def recommend_jobs(resume: ResumeInput):
   try:
     recommender = JobRecommender()  # Instantiate the recommender
     recommendations = recommender.recommend(resume.resume_text)
-    logging.info(f"Generated {len(recommendations)} job recommendations.")
+    logging.info(f"Generated {len(recommendations)} job recommendations.", exc_info=True)
     return recommendations
+  except ValidationError as ve:  # Handle Pydantic validation errors
+    logging.error(f"Validation error: {ve}", contentFetchId='uploaded:code-andy-stackbaker/ResumeCopilot-AI/ResumeCopilot-AI-c028b77728b4c051090ae3bdc293a8597a35b572/app/api/v1/routes.py')
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # Use 422 for validation errors
+        detail=ve.errors()
+    )
   except Exception as e:
     logging.error(f"Error generating job recommendations: {e}", exc_info=True)
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-      detail="Failed to generate job recommendations"
+      detail="Failed to generate job recommendations : {e}"
     )
