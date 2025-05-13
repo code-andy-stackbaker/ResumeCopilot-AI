@@ -9,6 +9,7 @@ load_dotenv()
 
 # Define the project root dynamically and robustly
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # Assuming app is one level below
+print ("the project root:", PROJECT_ROOT)
 
 def root_path(*args):
     return os.path.join(PROJECT_ROOT, *args)
