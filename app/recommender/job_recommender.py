@@ -62,14 +62,12 @@ class JobRecommender:
         logging.error(f"Exception during initialization: {e}", exc_info=True)
         raise
     
-    
     # Inside the JobRecommender class:
-
     # Decorator for retrying the FAISS search operation
     @retry(
-        wait=wait_exponential(multiplier=1, min=1, max=5),  # Wait 1s, then 2s, then 4s
-        stop=stop_after_attempt(3),  # Retry 2 times after the first failure (total 3 attempts)
-        before_sleep=before_sleep_log(logger, logging.WARNING)  # Log before retrying
+      wait=wait_exponential(multiplier=1, min=1, max=5),  # Wait 1s, then 2s, then 4s
+      stop=stop_after_attempt(3),  # Retry 2 times after the first failure (total 3 attempts)
+      before_sleep=before_sleep_log(logger, logging.WARNING)  # Log before retrying
     )
     def _encode_and_search_faiss_with_retry(self, resume_text: str):
       logger.info("Attempting to encode resume and search FAISS index.")
@@ -80,8 +78,6 @@ class JobRecommender:
         return distances, indices
       except Exception as e:
         # This log is useful if the exception is NOT a standard one Tenacity would catch,
-        # but Tenacity will catch most runtime errors and trigger a retry.
-        # If all retries fail, Tenacity re-raises the last exception.
         logger.error(f"Error during encoding or FAISS search attempt: {e}", exc_info=False) # exc_info=False to avoid duplicate stack trace if Tenacity re-raises
         raise # Re-raise the exception to allow Tenacity to handle the retry
     

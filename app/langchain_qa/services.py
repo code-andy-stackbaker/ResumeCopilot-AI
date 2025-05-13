@@ -10,6 +10,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
 from langchain.schema.document import Document
 import torch # For MPS check
+from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log # New import
 
 
 # Setup logging
@@ -52,6 +53,52 @@ class QAService:
           logger.warning("MPS not built with PyTorch. Consider rebuilding PyTorch with MPS support if you have an Apple Silicon Mac.")
       
       self._load_components()
+      
+    # Inside the QAService class:
+
+    @retry(
+      wait=wait_exponential(multiplier=1, min=1, max=10), # Wait 1s, 2s, 4s, 8s, then 10s (longer max for potentially slower LLMs)
+      stop=stop_after_attempt(3),
+      before_sleep=before_sleep_log(logger, logging.WARNING)
+    )
+    def _invoke_general_retrieval_chain_with_retry(self, question: str):
+      logger.info(f"Attempting to invoke general retrieval chain for question: {question[:70]}...")
+      if not self.general_retrieval_chain:
+        logger.error("General retrieval chain is not initialized before invoking.")
+        # This is a programming error / state issue, not something retries will fix.
+        raise SystemError("QAService general retrieval chain not initialized.")
+      
+      try:
+        result = self.general_retrieval_chain.invoke({"input": question})
+        logger.info("General retrieval chain invoked successfully.")
+        return result
+      except Exception as e:
+        logger.error(f"Error during general_retrieval_chain.invoke attempt: {e}", exc_info=False)
+        raise # Re-raise for Tenacity to handle
+      
+    # Inside the QAService class:
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        stop=stop_after_attempt(3),
+        before_sleep=before_sleep_log(logger, logging.WARNING)
+    )
+    def _invoke_combine_docs_chain_with_retry(self, question: str, context_documents: list[Document]):
+      logger.info(f"Attempting to invoke combine docs chain for question: {question[:70]}...")
+      if not self.combine_docs_chain:
+        logger.error("Combine docs chain is not initialized before invoking.")
+        raise SystemError("QAService combine docs chain not initialized.")
+      try:
+        # The context_documents are already prepared as a list of Document objects
+        raw_result = self.combine_docs_chain.invoke({
+            "input": question,
+            "context": context_documents
+        })
+        logger.info("Combine docs chain invoked successfully.")
+        return raw_result
+      except Exception as e:
+        logger.error(f"Error during combine_docs_chain.invoke attempt: {e}", exc_info=False)
+        raise # Re-raise for Tenacity    
 
     def _load_components(self):
       try:
@@ -79,13 +126,13 @@ class QAService:
         
         # Inside _load_components method, replace the old prompt_template line with this:
         detailed_prompt_text = (
-            "Use the following pieces of context ONLY to answer the question at the end. "
-            "The context may contain a candidate's resume and a specific job description. "
-            "If the question asks about required skills for the job, focus ONLY on the 'Specific Job Description' part of the context. "
-            "If the context does not contain the answer, clearly state that the answer cannot be determined from the provided context.\n\n"
-            "Context:\n{context}\n\n"
-            "Question: {input}\n"
-            "Answer:"
+          "Use the following pieces of context ONLY to answer the question at the end. "
+          "The context may contain a candidate's resume and a specific job description. "
+          "If the question asks about required skills for the job, focus ONLY on the 'Specific Job Description' part of the context. "
+          "If the context does not contain the answer, clearly state that the answer cannot be determined from the provided context.\n\n"
+          "Context:\n{context}\n\n"
+          "Question: {input}\n"
+          "Answer:"
         )
         self.prompt_template = PromptTemplate.from_template(detailed_prompt_text)
         logger.info("Using detailed prompt template.")
@@ -106,25 +153,18 @@ class QAService:
         raise # Re-raise to signal failure to initialize
 
     def answer_general_question(self, question: str) -> dict:
-      """
-      Answers a general question using the FAISS index of all jobs.
-      """
       if not self.general_retrieval_chain:
         logger.error("General retrieval chain is not initialized.")
         return {"error": "QAService not properly initialized."}
       try:
         logger.info(f"Answering general question: {question}")
-        result = self.general_retrieval_chain.invoke({"input": question})
+        result = self._invoke_general_retrieval_chain_with_retry(question)
         return result
       except Exception as e:
         logger.error(f"Error during general question answering: {e}")
         return {"error": str(e)}
 
     def answer_with_specific_context(self, question: str, context_text: str) -> dict:
-      """
-      Answers a question based on the specifically provided context text.
-      The context_text should already combine relevant information (e.g., resume + job description).
-      """
       if not self.combine_docs_chain:
         logger.error("Combine docs chain is not initialized.")
         return {"error": "QAService not properly initialized."}
@@ -135,10 +175,7 @@ class QAService:
         logger.info(f"Context documents being passed: {context_documents}") # Log the input docs
 
         logger.info(f"Invoking combine_docs_chain...")
-        raw_result = self.combine_docs_chain.invoke({
-          "input": question,
-          "context": context_documents
-        })
+        raw_result = self._invoke_combine_docs_chain_with_retry(question, context_text)
         logger.info(f"RAW result dictionary from combine_docs_chain:") # <-- Log the raw output
 
         # Check if the expected 'answer' key exists and has content
