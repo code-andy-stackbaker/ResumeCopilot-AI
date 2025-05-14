@@ -5,7 +5,7 @@ from app.services.keyword_extractor import extract_keywords
 from app.recommender.job_recommender import JobRecommender  # Import the recommender
 import logging
 from pydantic import BaseModel, ValidationError
-from typing import List, Dict
+from typing import List, Dict, Optional
 from app.langchain_qa.services import QAService
 
 
@@ -14,16 +14,28 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 router = APIRouter()
 
-class JobRecommendation(BaseModel):
-  rank: int
-  job_description: str
-  faiss_score: float
-  classifier_score: float
+class JobItemOutputSchema(BaseModel): # Example - should match what recommender outputs
+    job_id: str
+    title: str
+    company: Optional[str] = None
+    location: Optional[str] = None
+    job_description_snippet: Optional[str] = None
+    vector_score_l2_distance: float
+    classifier_match_score: float
+    final_rank: int
+    class Config:
+      from_attributes = True # For Pydantic v2+ (orm_mode is for v1)
+
+
+class JobRecommendationResponseSchema(BaseModel):
+    recommendations: List[JobItemOutputSchema]
+    class Config:
+        from_attributes = True
   
 class QAInput(BaseModel):
-  query: str
-  context_text: str = None  # Optional context
-  resume: str = None
+    query: str
+    context_text: str = None  # Optional context
+    resume: str = None
 
 class QAResponse(BaseModel):
   answer: str
@@ -41,7 +53,7 @@ async def generate_keywords(resume: ResumeInput):
   
   
   
-@router.post("/recommend-jobs", response_model=List[JobRecommendation])
+@router.post("/recommend-jobs", response_model= JobRecommendationResponseSchema)
 async def recommend_jobs(resume: ResumeInput):
   """
   Endpoint to get job recommendations based on a resume.

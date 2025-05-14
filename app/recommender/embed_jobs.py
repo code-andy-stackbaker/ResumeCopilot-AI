@@ -30,7 +30,7 @@ def create_embeddings_and_index(
     try:
         logging.info(f"Loading data from {data_path}...")
         df = pd.read_csv(data_path)
-        job_descriptions = df["job_desciption"].tolist()
+        job_descriptions = df["job_description_text"].tolist()
 
         # Determine device for SentenceTransformer
         if torch.backends.mps.is_available() and torch.backends.mps.is_built():
