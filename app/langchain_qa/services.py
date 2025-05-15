@@ -100,18 +100,13 @@ class QAService:
             # Perform the dimension consistency check
             if model_embed_dim != QA_EMBEDDING_DIMENSION:
                 error_msg = (f"CRITICAL MISMATCH: Q&A Embedding model '{QA_EMBEDDING_MODEL_NAME}' (actual dimension: {model_embed_dim}) "
-                             f"differs from configured QA_EMBEDDING_DIMENSION ({QA_EMBEDDING_DIMENSION}). "
-                             f"The embeddings for questions MUST match the dimension of 'jobs.job_description_embedding' "
-                             f"(which should be EMBEDDING_DIMENSION_RECOMMENDER={EMBEDDING_DIMENSION_RECOMMENDER}).")
+                             f"differs from configured QA_EMBEDDING_DIMENSION ({QA_EMBEDDING_DIMENSION}). ")
                 logger.error(error_msg)
                 raise ValueError(error_msg)
             
             logger.info(f"Q&A Embedding model dimension ({model_embed_dim}) matches configured QA_EMBEDDING_DIMENSION ({QA_EMBEDDING_DIMENSION}). This is crucial for pgvector queries.")
             logger.info("Q&A Embedding model loaded and dimension verified successfully.")
 
-            logger.info("Context retrieval will use PostgreSQL+pgvector. FAISS loading is skipped.")
-
-            logger.info(f"Loading LLM model from: {LLM_MODEL_PATH}")
             if not os.path.exists(LLM_MODEL_PATH): # Check if LLM model file exists
                 logger.error(f"LLM model file not found at configured LLM_MODEL_PATH: {LLM_MODEL_PATH}")
                 raise FileNotFoundError(f"LLM model file not found: {LLM_MODEL_PATH}")
@@ -130,7 +125,6 @@ class QAService:
                 "Your answer should be derived solely from the information found within this provided context. "
                 "If the context directly answers the question, provide that answer. "
                 "If the context does not directly answer the question but contains related information, summarize what relevant information is present. "
-                "If the context contains no relevant information to the question, state: 'The provided context does not offer information to answer this question.' "
                 "Avoid making assumptions or using external knowledge.\n\n"
                 "Context:\n{context}\n\n"
                 "Question: {input}\n"
@@ -198,8 +192,7 @@ class QAService:
                 doc_metadata = {k: v for k, v in doc_metadata.items() if v is not None}
 
                 doc = Document(
-                    page_content=str(row_data.job_description_text), 
-                    metadata=doc_metadata
+                    page_content=str(row_data.job_description_text)
                 )
                 retrieved_documents.append(doc)
             
@@ -221,7 +214,8 @@ class QAService:
         before_sleep=before_sleep_log(logger, logging.WARNING)
     )
     def _invoke_combine_docs_chain_with_retry(self, question: str, context_documents: List[Document]) -> str:
-        logger.info(f"Attempting to invoke combine docs chain for question: '{question[:70]}...' with {len(context_documents)} context docs.")
+        logger.info(f"Attempting to invoke combine docs chain for question: '{question[:10]}...' with {len(context_documents)} context docs.")
+        print("the context documents", context_documents)
         if not self.combine_docs_chain:
             logger.error("Combine docs chain is not initialized before invoking.")
             raise SystemError("QAService combine docs chain not initialized.")
@@ -235,7 +229,7 @@ class QAService:
                 "input": question,
                 "context": context_documents 
             })
-            logger.info("Combine docs chain invoked successfully.")
+            logger.info("Combine docs chain invoked successfully.", answer_string)
             return str(answer_string) if answer_string is not None else ""
         except Exception as e:
             logger.error(f"Error during combine_docs_chain.invoke attempt: {e}", exc_info=True) 
@@ -246,22 +240,7 @@ class QAService:
         stop=stop_after_attempt(3),
         before_sleep=before_sleep_log(logger, logging.WARNING)
     )
-    def _invoke_general_retrieval_chain_with_retry(self, question: str):
-        # This method is defined but not currently used by answer_general_question.
-        # If you intend to use self.general_retrieval_chain, it would need to be initialized
-        # in _load_components, potentially using a pgvector-backed retriever.
-        logger.info(f"Attempting to invoke general retrieval chain for question: {question[:70]}...")
-        if not self.general_retrieval_chain:
-            logger.error("General retrieval chain is not initialized before invoking.")
-            raise SystemError("QAService general retrieval chain not initialized.")
-        
-        try:
-            result = self.general_retrieval_chain.invoke({"input": question})
-            logger.info("General retrieval chain invoked successfully.")
-            return result
-        except Exception as e:
-            logger.error(f"Error during general_retrieval_chain.invoke attempt: {e}", exc_info=False) # exc_info=False for brevity if retrying
-            raise 
+
         
     def answer_general_question(self, question: str) -> Dict:
         logger.info(f"Answering general question: '{question[:100]}...' using pgvector retrieval from database.")
