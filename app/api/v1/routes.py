@@ -113,7 +113,7 @@ async def qa_context(qa_input: QAInput):
       qa_service = QAService()
       result = qa_service.answer_with_specific_context(qa_input.query, context_for_llm)
       logging.info(f"Generated context-based QA answer: {result}")
-      return {"answer": result} # adjust based on your actual data
+      return {"answer": result['answer']} # adjust based on your actual data
   except Exception as e:
       logging.error(f"Error processing context-based QA query: {e}", exc_info=True)
       raise HTTPException(

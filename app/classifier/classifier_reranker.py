@@ -36,7 +36,7 @@ class ClassifierReranker:
         if not resume_text or not job_text:
           raise ValueError("Both resume_text and job_text must be provided.")
         input_text = f"{resume_text} [SEP] {job_text}"
-        print("🔠 Combined text:", input_text)
+        # print("🔠 Combined text:", input_text)
         inputs = self.tokenizer(
             input_text,
             return_tensors="pt",
