@@ -28,3 +28,11 @@ class Job(Base):
     # The dimension (EMBEDDING_DIMENSION_RECOMMENDER) MUST match the output
     # dimension of the sentence transformer model you are using.
     job_description_embedding = Column(Vector(EMBEDDING_DIMENSION_RECOMMENDER), nullable=True)
+    
+     # --- RECOMMENDED NEW COLUMN ---
+    last_updated_ts = Column(
+        TIMESTAMP(timezone=True), 
+        server_default=func.now(),  # Sets current time on insert if not provided
+        onupdate=func.now()         # Sets current time on update (SQLAlchemy ORM updates)
+    )
+    # --- END OF RECOMMENDED NEW COLUMN ---
