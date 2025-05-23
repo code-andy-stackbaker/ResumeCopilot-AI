@@ -1,0 +1,28 @@
+# LLM_DeepLearning/docker-compose.override.yml
+services:
+  fastapi_app:
+    # Build context remains the same as main docker-compose.yml
+    # container_name, ports, env_file, environment are inherited/merged
+
+    # Override the volumes for local development
+    volumes:
+      # Mount your local app code into the container
+      # This ensures any changes you make locally are reflected immediately
+      - ./app:/app/app
+      # Keep the LLM model mount as it's needed for the app
+      - /Volumes/Data/Development/Programming/Python/LLM/mistral-7b-instruct-v0.1.Q4_K_M.gguf:/app_models/mistral-7b-instruct-v0.1.Q4_K_M.gguf
+
+    # Override the default CMD with uvicorn's reload option for development
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
+
+    # Prevent restart during development when you stop/start the container manually
+    restart: "no"

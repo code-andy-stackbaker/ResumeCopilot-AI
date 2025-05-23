@@ -2,7 +2,11 @@ from sentence_transformers import SentenceTransformer, util
 import torch
 
 # Load the MiniLM model for fast and meaningful sentence embeddings
-model = SentenceTransformer("all-MiniLM-L6-v2")
+try:
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    print("Successfully loaded sentence-transformers/all-MiniLM-L6-v2 locally!")
+except Exception as e:
+    print(f"Error loading model locally: {e}")
 
 # Define a fixed list of technical or job-related keywords
 CANDIDATE_KEYWORDS = [

@@ -1,0 +1,29 @@
+# LLM_DeepLearning/my_local_airflow_environment/requirements-airflow.txt
+# Dedicated requirements for the Airflow environment
+
+# For app.database.models.Job (pgvector.sqlalchemy)
+pgvector==0.4.1
+
+# For app.database.models.Job and utils.db_utils.py
+# Airflow 2.9.2 base image uses SQLAlchemy ~1.4. This pin is compatible.
+SQLAlchemy>=1.4.46,<2.0
+
+# For utils.embedding_utils.py
+sentence-transformers==4.1.0
+# Example: Pin to a known good version; adjust as needed.
+# sentence-transformers will pull in its required versions of torch, transformers, numpy etc.
+
+# For utils.db_utils.py (pd.to_datetime)
+pandas==2.2.3 # Matches version in your original requirements.txt
+
+# If gmpy2 is truly needed by your DAG-executed code or a dependency thereof.
+# Your Dockerfile prepares OS libraries for it.
+# gmpy2==2.2.1
+
+# IMPORTANT NOTES:
+# 1. The base `apache/airflow:2.9.2-python3.11` image already includes `psycopg2-binary`.
+# 2. This list AVOIDS FastAPI-specific libraries and Pydantic V2, which were the primary
+#    suspects for breaking the Airflow CLI.
+# 3. If `sentence-transformers` requires specific versions of `torch` or `transformers`
+#    that conflict with other minimal needs, pip's resolver should handle it or error out.
+#    Check the build log carefully.

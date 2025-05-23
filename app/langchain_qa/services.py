@@ -49,8 +49,8 @@ QA_EMBEDDING_MODEL_NAME = os.getenv("QA_EMBEDDING_MODEL_NAME", "sentence-transfo
 # It defaults to EMBEDDING_DIMENSION_RECOMMENDER from config, which should be consistent with your ingested embeddings.
 QA_EMBEDDING_DIMENSION = int(os.getenv("QA_EMBEDDING_DIMENSION", EMBEDDING_DIMENSION_RECOMMENDER))
 
-LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", "/default/path/to/your/llm.gguf") # Load from .env
-LLM_MODEL_TYPE = os.getenv("LLM_MODEL_TYPE", "mistral") # Load from .env
+LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH") # Load from .env
+LLM_MODEL_TYPE = os.getenv("LLM_MODEL_TYPE") # Load from .env
 NUM_DOCS_TO_RETRIEVE_FOR_QA = int(os.getenv("NUM_DOCS_TO_RETRIEVE_FOR_QA"))
 logger.info("the total number fetch :", NUM_DOCS_TO_RETRIEVE_FOR_QA)
 
@@ -111,7 +111,7 @@ class QAService:
                 logger.error(f"LLM model file not found at configured LLM_MODEL_PATH: {LLM_MODEL_PATH}")
                 raise FileNotFoundError(f"LLM model file not found: {LLM_MODEL_PATH}")
             
-            llm_config = {"max_new_tokens": 350, "temperature": 0.3, "context_length": 4096, "gpu_layers": 20}
+            llm_config = {"max_new_tokens": 350, "temperature": 0.3, "context_length": 4096}
            
             self.llm = CTransformers(
                 model=LLM_MODEL_PATH,

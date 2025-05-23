@@ -1,0 +1,29 @@
+# LLM_DeepLearning/docker-compose.yml
+services:
+  fastapi_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi_service
+    restart: unless-stopped # Good for production, not always needed for dev
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=host.docker.internal
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - HF_HOME=/tmp/huggingface_home_cache
+      - HUGGINGFACE_HUB_CACHE=/tmp/huggingface_hub_model_cache
+      - TRANSFORMERS_CACHE=/tmp/transformers_model_cache
+    volumes:
+      # Keep your LLM model volume mount for the container
+      - /Volumes/Data/Development/Programming/Python/LLM/mistral-7b-instruct-v0.1.Q4_K_M.gguf:/app_models/mistral-7b-instruct-v0.1.Q4_K_M.gguf
+    networks:
+      - llm_deeplearning_network
+
+networks:
+  llm_deeplearning_network:
+    external: true
+    name: llm_deeplearning_network
